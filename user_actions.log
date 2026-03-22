@@ -1,0 +1,28 @@
+[2026-03-22T05:55:55.616807] [gblzera] [USER_LOGIN] User 'gblzera' logged in
+[2026-03-22T05:56:26.582667] [gblzera] [CONFIG] Monitor URL set: https://www.b3.com.br/pt_br/para-voce
+[2026-03-22T05:56:59.599307] [gblzera] [ERROR] Invalid notifier URL: Invalid URL format. Must include scheme (http/https)
+[2026-03-22T05:57:09.715823] [gblzera] [USER_LOGIN] User 'gblzera' logged in
+[2026-03-22T05:57:25.470691] [gblzera] [CONFIG] Monitor URL set: https://www.b3.com.br/pt_br/para-voce
+[2026-03-22T05:57:29.999854] [gblzera] [CONFIG] Notifier URL set: https://mail.google.com/mail/u/0/#inbox
+[2026-03-22T05:57:30.001223] [gblzera] [CONFIG] Starting monitor configuration
+[2026-03-22T05:59:13.917486] [gblzera] [CONFIG] Price element selected: //*[@id="conteudo-principal"]/div[1]/app-investors-tab[1]/div[1]/app-charts[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[1]/div[2]/p[2]
+[2026-03-22T05:59:13.918602] [gblzera] [CONFIG] Starting notifier configuration
+[2026-03-22T05:59:57.695121] [gblzera] [ERROR] Notifier configuration cancelled
+[2026-03-22T05:59:57.896490] [gblzera] [SHUTDOWN] Application closed
+[2026-03-22T06:03:43.056062] [gblzera] [USER_LOGIN] User 'gblzera' logged in
+[2026-03-22T06:04:11.187926] [gblzera] [CONFIG] Monitor URL set: https://www.b3.com.br/pt_br/para-voce
+[2026-03-22T06:04:32.493870] [gblzera] [ERROR] Invalid notifier URL: Invalid URL format. Must include scheme (http/https)
+[2026-03-22T06:04:36.680570] [gblzera] [USER_LOGIN] User 'gblzera' logged in
+[2026-03-22T06:04:43.284227] [gblzera] [ERROR] Invalid monitor URL: Invalid URL format. Must include scheme (http/https)
+[2026-03-22T06:08:33.449331] [gblzera] [USER_LOGIN] User 'gblzera' logged in
+[2026-03-22T06:08:48.875089] [gblzera] [CONFIG] Monitor URL set: http://localhost:8080/product.html
+[2026-03-22T06:08:54.613403] [gblzera] [CONFIG] Notifier URL set: http://localhost:8080/notifier.html
+[2026-03-22T06:08:54.614781] [gblzera] [CONFIG] Starting monitor configuration
+[2026-03-22T06:09:08.245767] [gblzera] [CONFIG] Price element selected: //*[@id="price"]
+[2026-03-22T06:09:08.246761] [gblzera] [CONFIG] Starting notifier configuration
+[2026-03-22T06:09:46.175217] [gblzera] [CONFIG] Notifier configured - Input: //*[@id="message"], Button: //*[@id="sendBtn"]
+[2026-03-22T06:09:49.765104] [gblzera] [CONFIG] Monitoring interval set to 5.0s
+[2026-03-22T06:09:49.765957] [gblzera] [MONITOR_START] Starting monitoring with 5.0s interval
+[2026-03-22T06:09:54.839764] [gblzera] [PRICE_CHANGE] Price changed from 4150.0 to 4599.0
+[2026-03-22T06:09:55.966773] [gblzera] [NOTIFICATION] Notification sent successfully
+[2026-03-22T06:11:28.283834] [gblzera] [SHUTDOWN] Application closed
