@@ -1,3 +1,7 @@
+"""
+Utilitários gerais — WebDriver e validação de URL.
+"""
+
 import re
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
