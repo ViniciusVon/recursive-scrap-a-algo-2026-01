@@ -3,13 +3,12 @@ Monitor de Preços via Selenium
 
 """
 
-import re
 import logging
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import (
     WebDriverException
 )
+from utils import criar_driver, validar_url
 
 # ---------------------------------------------------------------------------
 # Configuração de logging
@@ -23,20 +22,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Utilitários de validação   O(1) por chamada
-# ---------------------------------------------------------------------------
-
-def validar_url(url: str) -> bool:
-    """Valida se a URL informada possui formato válido. O(1)"""
-    padrao = re.compile(
-        r"^(https?://)"           # esquema obrigatório
-        r"([a-zA-Z0-9\-\.]+)"    # domínio
-        r"(\.[a-zA-Z]{2,})"      # TLD
-        r"(:\d+)?(/.*)?$"        # porta e caminho opcionais
-    )
-    return bool(padrao.match(url.strip()))
-
 
 def validar_nome_usuario(nome: str) -> bool:
     """
@@ -49,23 +34,6 @@ def validar_nome_usuario(nome: str) -> bool:
     # Remove espaços entre palavras e verifica se tudo são letras
     partes = nome.split()
     return all(parte.isalpha() for parte in partes)
-
-# ---------------------------------------------------------------------------
-# Configuração do WebDriver   O(1)
-# ---------------------------------------------------------------------------
-
-def criar_driver(headless: bool = False) -> webdriver.Chrome:
-    """Instancia o ChromeDriver com opções básicas. O(1)"""
-    opcoes = Options()
-    if headless:
-        opcoes.add_argument("--headless")
-    opcoes.add_argument("--disable-gpu")
-    opcoes.add_argument("--no-sandbox")
-    opcoes.add_argument("--disable-dev-shm-usage")
-    opcoes.add_argument("--window-size=1920,1080")
-
-    driver = webdriver.Chrome(options=opcoes)
-    return driver
 
 # ---------------------------------------------------------------------------
 # Funções de monitoramento
