@@ -7,12 +7,14 @@ Utiliza Selenium para acessar a pagina e Regex para extrair:
 """
 
 import re
-from app import criar_driver, validar_url
+import logging
+from selenium.common.exceptions import WebDriverException
+from utils import criar_driver, validar_url
 
 
 def encontrar_monetarios(texto: str) -> list:
     """Extrai valores monetários do texto usando regex (ex: R$ 1.234,56 / $ 99.90)."""
-    padrao = r'R?\$\s?\d{1,3}(?:\.\d{3})*,\d{2}|\d{1,3}(?:\.\d{3})*,\d{2}'
+    padrao = r'(?:R\$\s?)?\d{1,3}(?:\.\d{3})*,\d{2}'
     return re.findall(padrao, texto)
 
 
@@ -33,8 +35,13 @@ def buscar_numeros_na_pagina(url: str, headless: bool = True) -> dict:
         texto = driver.find_element("tag name", "body").text
         monetarios = encontrar_monetarios(texto)
         datas = encontrar_datas(texto)
-        return {"texto": texto[:500], "monetarios": monetarios, "datas": datas}
+        logger = logging.getLogger(__name__)
+        logger.info("Monetários encontrados: %s", monetarios)
+        logger.info("Datas encontradas: %s", datas)
+        return {"monetarios": monetarios, "datas": datas}
+    except WebDriverException as e:
+        return {"erro": f"Falha no navegador: {e}", "monetarios": [], "datas": []}
     except Exception as e:
-        return {"erro": str(e), "monetarios": [], "datas": []}
+        return {"erro": f"Erro inesperado: {e}", "monetarios": [], "datas": []}
     finally:
         driver.quit()
