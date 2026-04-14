@@ -9,7 +9,7 @@ Utiliza Selenium para acessar a pagina e Regex para extrair:
 import re
 import logging
 from selenium.common.exceptions import WebDriverException
-from utils import criar_driver, validar_url
+from src.utils import criar_driver, validar_url
 
 
 def encontrar_monetarios(texto: str) -> list:

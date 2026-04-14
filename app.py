@@ -8,7 +8,9 @@ from selenium import webdriver
 from selenium.common.exceptions import (
     WebDriverException
 )
-from utils import criar_driver, validar_url
+from src.utils import criar_driver, validar_url
+from src.validators import validar_nome_usuario, validar_email
+from src.db import inicializar_banco, cadastrar_usuario, listar_usuarios, buscar_usuario_por_id
 
 # ---------------------------------------------------------------------------
 # Configuração de logging
@@ -21,19 +23,6 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
-
-
-def validar_nome_usuario(nome: str) -> bool:
-    """
-    Valida se o nome de usuário contém ao menos 3 caracteres e é composto
-    apenas por letras (permite nomes compostos separados por espaço). O(n)
-    """
-    nome = nome.strip()
-    if len(nome) < 3:
-        return False
-    # Remove espaços entre palavras e verifica se tudo são letras
-    partes = nome.split()
-    return all(parte.isalpha() for parte in partes)
 
 # ---------------------------------------------------------------------------
 # Funções de monitoramento
@@ -55,6 +44,52 @@ def monitorar_preco(
 # Entrada do usuário via console
 # ---------------------------------------------------------------------------
 
+def identificar_usuario() -> dict:
+    """
+    Solicita a identificação do usuário: cadastra um novo ou seleciona
+    um existente no banco. O(n) onde n = quantidade de usuários cadastrados.
+    """
+    print("\n--- Identificação do Usuário ---\n")
+
+    usuarios = listar_usuarios()
+
+    if usuarios:
+        print("Usuários cadastrados:")
+        for uid, nome, email in usuarios:
+            print(f"  [{uid}] {nome} ({email})")
+        print()
+
+        opcao = input("Digite o ID para entrar ou 'n' para novo cadastro: ").strip().lower()
+
+        if opcao != "n":
+            try:
+                usuario = buscar_usuario_por_id(int(opcao))
+                if usuario:
+                    logger.info("LOG | Usuário identificado: '%s' (%s)", usuario[1], usuario[2])
+                    return {"id": usuario[0], "nome": usuario[1], "email": usuario[2]}
+            except ValueError:
+                pass
+            print("  ID inválido. Vamos cadastrar um novo usuário.\n")
+
+    # Cadastro de novo usuário
+    while True:
+        nome = input("Seu nome (mínimo 3 letras, apenas caracteres): ").strip()
+        if validar_nome_usuario(nome):
+            break
+        print("  Nome inválido. Use apenas letras, ao menos 3 caracteres.\n")
+
+    while True:
+        email = input("Seu e-mail: ").strip()
+        if validar_email(email):
+            break
+        print("  E-mail inválido. Tente novamente.\n")
+
+    usuario_id = cadastrar_usuario(nome, email)
+    logger.info("LOG | Novo usuário cadastrado: '%s' (%s) [ID: %d]", nome, email, usuario_id)
+
+    return {"id": usuario_id, "nome": nome, "email": email}
+
+
 def coletar_entradas() -> dict:
     """
     Solicita ao usuário todas as informações necessárias para o monitoramento.
@@ -64,13 +99,7 @@ def coletar_entradas() -> dict:
     print("  Monitor de Preços via Selenium")
     print("========================================\n")
 
-    # Nome do usuário
-    while True:
-        nome = input("Seu nome (mínimo 3 letras, apenas caracteres): ").strip()
-        if validar_nome_usuario(nome):
-            logger.info("LOG | Usuário identificado: '%s'", nome)
-            break
-        print("  Nome inválido. Use apenas letras, ao menos 3 caracteres.\n")
+    usuario = identificar_usuario()
 
     # URL a monitorar
     while True:
@@ -86,7 +115,7 @@ def coletar_entradas() -> dict:
     logger.info("LOG | Modo headless: %s", headless)
 
     return {
-        "nome_usuario": nome,
+        "usuario": usuario,
         "url": url,
         "headless": headless,
     }
@@ -96,6 +125,7 @@ def coletar_entradas() -> dict:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    inicializar_banco()
     parametros = coletar_entradas()
 
     driver = None
