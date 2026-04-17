@@ -8,10 +8,9 @@ import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-logger = logging.getLogger(__name__)
+from src.constants import SMTP_HOST, SMTP_PORT
 
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
+logger = logging.getLogger(__name__)
 
 
 def carregar_senha_app() -> str:

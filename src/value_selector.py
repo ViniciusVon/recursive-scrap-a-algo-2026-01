@@ -6,6 +6,7 @@ uma lista ao usuário. O usuário escolhe qual valor deseja monitorar,
 e o sistema armazena o XPath desse elemento para acompanhamento.
 """
 
+import os
 import logging
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException, WebDriverException
@@ -13,38 +14,16 @@ from selenium.webdriver.common.by import By
 
 logger = logging.getLogger(__name__)
 
-# Script JS: percorre o DOM, pega elementos folha (sem filhos) com texto que
-# contém dígitos, e devolve [{text, xpath}, ...]
-JS_LISTAR_VALORES = """
-function getXPath(el) {
-    if (el === document.body) return '/html/body';
-    var ix = 0;
-    var siblings = el.parentNode ? el.parentNode.childNodes : [];
-    for (var i = 0; i < siblings.length; i++) {
-        var sib = siblings[i];
-        if (sib === el) {
-            return getXPath(el.parentNode) + '/' + el.tagName.toLowerCase() + '[' + (ix + 1) + ']';
-        }
-        if (sib.nodeType === 1 && sib.tagName === el.tagName) ix++;
-    }
-    return '';
-}
+# Caminho do script JS que lista valores numéricos com seus XPaths
+JS_LISTAR_VALORES_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "js", "list_values.js"
+)
 
-var resultados = [];
-var todos = document.body.getElementsByTagName('*');
-var regex = /\\d/;
-for (var i = 0; i < todos.length; i++) {
-    var el = todos[i];
-    if (el.children.length > 0) continue;
-    var tag = el.tagName.toLowerCase();
-    if (tag === 'script' || tag === 'style' || tag === 'noscript') continue;
-    var texto = (el.innerText || el.textContent || '').trim();
-    if (!texto || !regex.test(texto)) continue;
-    if (texto.length > 200) continue;
-    resultados.push({text: texto, xpath: getXPath(el)});
-}
-return resultados;
-"""
+
+def _carregar_script_js() -> str:
+    """Lê o conteúdo do arquivo JS que lista valores. O(1)."""
+    with open(JS_LISTAR_VALORES_PATH, encoding="utf-8") as f:
+        return f.read()
 
 
 def listar_valores_com_xpath(driver: webdriver.Chrome) -> list:
@@ -53,7 +32,8 @@ def listar_valores_com_xpath(driver: webdriver.Chrome) -> list:
     que contêm dígitos. O(n) onde n = número de elementos no DOM.
     """
     try:
-        resultados = driver.execute_script(JS_LISTAR_VALORES)
+        script = _carregar_script_js()
+        resultados = driver.execute_script(script)
         # Remove duplicatas mantendo ordem
         vistos = set()
         unicos = []

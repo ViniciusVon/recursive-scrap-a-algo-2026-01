@@ -16,9 +16,9 @@ from selenium.common.exceptions import (
     NoSuchElementException,
 )
 
-logger = logging.getLogger(__name__)
+from src.constants import TIMEOUT_SEGUNDOS
 
-TIMEOUT_SEGUNDOS = 10
+logger = logging.getLogger(__name__)
 
 
 def abrir_aba_form(driver: webdriver.Chrome, form_url: str) -> str:

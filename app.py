@@ -16,7 +16,7 @@ from src.db import inicializar_banco, cadastrar_usuario, listar_usuarios, buscar
 from src.notifier import enviar_email, carregar_senha_app
 from src.form_recorder import abrir_aba_form, registrar_alteracao
 from src.value_selector import selecionar_valor, ler_valor_por_xpath
-from src.config import FORM_URL, INTERVALO_SEGUNDOS
+from src.constants import FORM_URL, INTERVALO_SEGUNDOS
 
 # ---------------------------------------------------------------------------
 # Configuração de logging

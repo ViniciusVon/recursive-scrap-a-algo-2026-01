@@ -67,7 +67,7 @@ GMAIL_APP_PASSWORD=sua senha de app do gmail aqui
 
 ### 4.2 Google Form
 
-A URL do Google Form de registro está fixa em `src/config.py`:
+A URL do Google Form de registro está fixa em `src/constants.py`:
 
 ```python
 FORM_URL = "https://forms.gle/9qC2PVjEdfA3QQ7E9"
@@ -115,14 +115,16 @@ recursive-scrap-a-algo-2026-01/
 ├── .env                        # Senha de app do Gmail (ignorado pelo git)
 ├── .gitignore
 └── src/
-    ├── config.py               # Constantes (FORM_URL, INTERVALO_SEGUNDOS)
+    ├── constants.py            # Constantes centralizadas (URLs, timeouts, SMTP)
     ├── db.py                   # Persistência SQLite (CRUD de usuários)
     ├── form_recorder.py        # Registra alterações no Google Form
     ├── notifier.py             # Envio de e-mail via Gmail SMTP
     ├── search_numbers.py       # Regex para encontrar números no texto
     ├── utils.py                # WebDriver + validação de URL
     ├── validators.py           # Validação de nome e e-mail
-    └── value_selector.py       # Seleção do valor específico a monitorar
+    ├── value_selector.py       # Seleção do valor específico a monitorar
+    └── js/
+        └── list_values.js      # Script JS para varredura do DOM
 ```
 
 ---
@@ -205,14 +207,17 @@ Entry point. Orquestra todo o fluxo: identificação do usuário, coleta de URL,
 | `coletar_entradas()` | Coleta URL e configurações | O(1) |
 | `main()` | Ponto de entrada principal | — |
 
-### 8.2 `src/config.py`
+### 8.2 `src/constants.py`
 
-Constantes globais da aplicação.
+Constantes globais da aplicação — centraliza todos os valores fixos.
 
 | Constante | Valor | Uso |
 |-----------|-------|-----|
 | `FORM_URL` | `https://forms.gle/9qC2PVjEdfA3QQ7E9` | URL fixa do Google Form |
 | `INTERVALO_SEGUNDOS` | `15` | Intervalo entre ciclos de monitoramento |
+| `TIMEOUT_SEGUNDOS` | `10` | Timeout de esperas do Selenium (form) |
+| `SMTP_HOST` | `smtp.gmail.com` | Servidor SMTP do Gmail |
+| `SMTP_PORT` | `587` | Porta SMTP (TLS) |
 
 ### 8.3 `src/db.py`
 
@@ -246,13 +251,16 @@ Persistência SQLite com tabela `usuarios (id, nome, email)`.
 | `encontrar_numeros(texto)` | Regex para extrair números (inteiros, decimais, datas, horários) | O(n) |
 | `buscar_numeros_na_pagina(url, headless)` | Abre URL e extrai números (função utilitária) | O(n) |
 
-### 8.7 `src/value_selector.py`
+### 8.7 `src/value_selector.py` + `src/js/list_values.js`
 
-Seleção do valor específico a monitorar via DOM + XPath.
+Seleção do valor específico a monitorar via DOM + XPath. O script JavaScript
+que varre o DOM (função `listarValores`) fica em arquivo `.js` separado para
+manter o código organizado e com syntax highlighting apropriado.
 
 | Função | Descrição | Complexidade |
 |--------|-----------|--------------|
-| `listar_valores_com_xpath(driver)` | Varre o DOM via JavaScript, retorna [{text, xpath}, ...] | O(n) |
+| `_carregar_script_js()` | Lê o conteúdo de `src/js/list_values.js` | O(1) |
+| `listar_valores_com_xpath(driver)` | Executa o JS no navegador e retorna [{text, xpath}, ...] | O(n) |
 | `selecionar_valor(driver)` | Mostra lista enumerada e pede escolha do usuário | O(n) |
 | `ler_valor_por_xpath(driver, xpath)` | Lê texto atual do elemento identificado | O(1) |
 
