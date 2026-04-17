@@ -29,7 +29,12 @@ def _carregar_script_js() -> str:
 def listar_valores_com_xpath(driver: webdriver.Chrome) -> list:
     """
     Retorna lista de dicts {text, xpath} com todos os elementos da página
-    que contêm dígitos. O(n) onde n = número de elementos no DOM.
+    que contêm dígitos.
+
+    Complexidade: O(n · d) onde n = total de elementos no DOM e
+    d = profundidade média da árvore. O custo vem de `getXPath()` no JS,
+    que sobe recursivamente até a raiz para cada folha com dígitos.
+    A deduplicação em Python é O(k), com k = valores encontrados.
     """
     try:
         script = _carregar_script_js()
@@ -51,7 +56,10 @@ def listar_valores_com_xpath(driver: webdriver.Chrome) -> list:
 def selecionar_valor(driver: webdriver.Chrome) -> dict:
     """
     Exibe os valores numéricos encontrados e pede que o usuário escolha
-    qual monitorar. Retorna {text, xpath} do selecionado. O(n).
+    qual monitorar. Retorna {text, xpath} do selecionado.
+
+    Complexidade: O(n · d) — dominado pelo `listar_valores_com_xpath`.
+    A impressão dos resultados é limitada a 30 itens (O(1)).
     """
     valores = listar_valores_com_xpath(driver)
 
@@ -87,7 +95,12 @@ def selecionar_valor(driver: webdriver.Chrome) -> dict:
 
 
 def ler_valor_por_xpath(driver: webdriver.Chrome, xpath: str) -> str:
-    """Lê o texto atual do elemento identificado pelo XPath. O(1)."""
+    """Lê o texto atual do elemento identificado pelo XPath.
+
+    Complexidade: O(d) no caso médio, O(n) no pior caso, onde d =
+    profundidade do XPath absoluto e n = tamanho do DOM. O navegador
+    resolve XPaths absolutos descendo nível a nível.
+    """
     try:
         elemento = driver.find_element(By.XPATH, xpath)
         return elemento.text.strip()

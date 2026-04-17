@@ -42,7 +42,12 @@ def registrar_alteracao(
 ) -> bool:
     """
     Troca para a aba do Google Form, preenche os campos e clica em Enviar.
-    Retorna True se registrou com sucesso. O(n) onde n = quantidade de campos.
+    Retorna True se registrou com sucesso.
+
+    Complexidade: O(m) onde m = tamanho do DOM do formulário. A busca
+    de `find_elements` é linear no DOM; o preenchimento dos k campos e
+    a varredura dos botões até achar "Enviar" são O(k) e O(b), ambos
+    dominados por O(m). I/O de rede (reload do form) é custo externo.
 
     Campos esperados (na ordem do form):
       1. URL monitorada

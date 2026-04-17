@@ -51,7 +51,12 @@ def enviar_email(destinatario: str, senha_app: str, assunto: str, corpo: str) ->
 
 
 def montar_corpo_alteracao(url: str, antes: dict, depois: dict) -> str:
-    """Monta o corpo do e-mail com as alterações detectadas. O(n)"""
+    """Monta o corpo do e-mail com as alterações detectadas.
+
+    Complexidade: O(n log n) — a construção dos sets é O(n), a diferença
+    simétrica é O(n), e os `sorted(novos)` / `sorted(removidos)` custam
+    O(k log k), dominando o total.
+    """
     linhas = [
         "Alterações detectadas no monitoramento!",
         f"\nURL: {url}\n",

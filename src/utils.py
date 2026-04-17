@@ -11,7 +11,11 @@ from selenium.webdriver.chrome.options import Options
 # ---------------------------------------------------------------------------
 
 def validar_url(url: str) -> bool:
-    """Valida se a URL informada possui formato válido. O(1)"""
+    """Valida se a URL informada possui formato válido.
+
+    Complexidade: O(L) onde L = len(url). Na prática, L é limitado
+    (URLs raramente passam de ~2000 chars), então é tratado como O(1).
+    """
     padrao = re.compile(
         r"^(https?://)"           # esquema obrigatório
         r"([a-zA-Z0-9\-\.]+)"    # domínio
