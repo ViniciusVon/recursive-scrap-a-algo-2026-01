@@ -5,6 +5,7 @@ Monitor de Preços via Selenium
 
 import time
 import logging
+from datetime import datetime
 from selenium import webdriver
 from selenium.common.exceptions import (
     WebDriverException
@@ -12,8 +13,10 @@ from selenium.common.exceptions import (
 from src.utils import criar_driver, validar_url
 from src.validators import validar_nome_usuario, validar_email
 from src.db import inicializar_banco, cadastrar_usuario, listar_usuarios, buscar_usuario_por_id
-from src.search_numbers import encontrar_numeros
-from src.notifier import enviar_email, montar_corpo_alteracao, carregar_senha_app
+from src.notifier import enviar_email, carregar_senha_app
+from src.form_recorder import abrir_aba_form, registrar_alteracao
+from src.value_selector import selecionar_valor, ler_valor_por_xpath
+from src.config import FORM_URL, INTERVALO_SEGUNDOS
 
 # ---------------------------------------------------------------------------
 # Configuração de logging
@@ -31,26 +34,22 @@ logger = logging.getLogger(__name__)
 # Funções de monitoramento
 # ---------------------------------------------------------------------------
 
-INTERVALO_SEGUNDOS = 15
-
-
-def extrair_valores(driver: webdriver.Chrome) -> dict:
-    """Extrai todos os valores numéricos da página atual do driver. O(n)"""
-    texto = driver.find_element("tag name", "body").text
-    numeros = encontrar_numeros(texto)
-    return {"numeros": numeros}
-
 
 def monitorar_preco(
     driver: webdriver.Chrome,
     url: str,
     usuario: dict,
-    senha_app: str,
-) -> None:
+) -> list:
     """
-    Loop de monitoramento: a cada 15s extrai valores da página,
-    compara com a leitura anterior e notifica por e-mail se houver mudança.
-    O(n) por ciclo, onde n = tamanho do texto da página.
+    Loop de monitoramento do valor selecionado pelo usuário.
+
+    1. Carrega a página e pede ao usuário que selecione o valor a monitorar.
+    2. Abre segunda aba com o Google Form de registro.
+    3. A cada INTERVALO_SEGUNDOS refresca a página e lê o valor pelo XPath.
+    4. Se mudou → registra no Google Form e loga no console.
+    5. Retorna o histórico de alterações ao encerrar (Ctrl+C).
+
+    O(1) por ciclo (leitura de um único elemento pelo XPath).
     """
     logger.info("Iniciando monitoramento | URL: %s | Intervalo: %ds", url, INTERVALO_SEGUNDOS)
 
@@ -58,38 +57,77 @@ def monitorar_preco(
         driver.get(url)
     except WebDriverException as exc:
         logger.error("Falha ao carregar URL '%s': %s", url, exc)
-        return
+        return []
 
-    valores_anteriores = extrair_valores(driver)
-    logger.info("LOG | Leitura inicial: %d valores numéricos encontrados", len(valores_anteriores["numeros"]))
+    # Usuário escolhe qual valor monitorar
+    selecionado = selecionar_valor(driver)
+    if not selecionado:
+        logger.error("Nenhum valor selecionado. Encerrando.")
+        return []
+
+    xpath_monitorado = selecionado["xpath"]
+    valor_anterior = selecionado["text"]
+    logger.info("LOG | Valor inicial: '%s'", valor_anterior)
+    logger.info("LOG | XPath monitorado: %s", xpath_monitorado)
+
+    # Segunda aba para registro
+    aba_monitor = driver.current_window_handle
+    aba_form = abrir_aba_form(driver, FORM_URL)
+
     ciclo = 0
+    historico = []
 
-    while True:
-        time.sleep(INTERVALO_SEGUNDOS)
-        ciclo += 1
+    try:
+        while True:
+            time.sleep(INTERVALO_SEGUNDOS)
+            ciclo += 1
 
-        try:
-            driver.refresh()
-            valores_atuais = extrair_valores(driver)
-        except WebDriverException as exc:
-            logger.error("Falha ao atualizar página (ciclo %d): %s", ciclo, exc)
-            continue
+            try:
+                driver.switch_to.window(aba_monitor)
+                driver.refresh()
+                valor_atual = ler_valor_por_xpath(driver, xpath_monitorado)
+            except WebDriverException as exc:
+                logger.error("Falha ao atualizar página (ciclo %d): %s", ciclo, exc)
+                continue
 
-        if valores_atuais["numeros"] != valores_anteriores["numeros"]:
-            logger.info("LOG | ALTERAÇÃO DETECTADA no ciclo %d!", ciclo)
-            logger.info("LOG | Antes: %s", valores_anteriores["numeros"][:10])
-            logger.info("LOG | Depois: %s", valores_atuais["numeros"][:10])
+            if not valor_atual:
+                logger.warning("LOG | Ciclo %d — valor não encontrado no XPath", ciclo)
+                continue
 
-            corpo = montar_corpo_alteracao(url, valores_anteriores, valores_atuais)
-            enviar_email(
-                destinatario=usuario["email"],
-                senha_app=senha_app,
-                assunto=f"Alteração detectada — {url}",
-                corpo=corpo,
-            )
-            valores_anteriores = valores_atuais
-        else:
-            logger.info("LOG | Ciclo %d — sem alterações (%d valores)", ciclo, len(valores_atuais["numeros"]))
+            if valor_atual != valor_anterior:
+                logger.info("LOG | ALTERAÇÃO DETECTADA no ciclo %d!", ciclo)
+                logger.info("LOG | Antes: '%s'", valor_anterior)
+                logger.info("LOG | Depois: '%s'", valor_atual)
+
+                timestamp = datetime.now().isoformat(timespec="seconds")
+                registro = {
+                    "url": url,
+                    "valor_antigo": valor_anterior,
+                    "valor_novo": valor_atual,
+                    "timestamp": timestamp,
+                    "usuario": usuario.get("nome", ""),
+                }
+                historico.append(registro)
+
+                # Registra na segunda aba (Google Form)
+                registrar_alteracao(
+                    driver=driver,
+                    aba_monitor=aba_monitor,
+                    aba_form=aba_form,
+                    form_url=FORM_URL,
+                    dados=registro,
+                )
+
+                valor_anterior = valor_atual
+            else:
+                logger.info("LOG | Ciclo %d — sem alteração ('%s')", ciclo, valor_atual)
+    except KeyboardInterrupt:
+        logger.info(
+            "LOG | Monitoramento interrompido pelo usuário. %d alteração(ões) registrada(s).",
+            len(historico),
+        )
+
+    return historico
 
 # ---------------------------------------------------------------------------
 # Entrada do usuário via console
@@ -188,22 +226,41 @@ def main() -> None:
     parametros = coletar_entradas()
 
     driver = None
+    historico = []
     try:
         driver = criar_driver(headless=parametros["headless"])
-        monitorar_preco(
+        historico = monitorar_preco(
             driver=driver,
             url=parametros["url"],
             usuario=parametros["usuario"],
-            senha_app=parametros["senha_app"],
         )
-    except KeyboardInterrupt:
-        logger.info("Monitoramento interrompido pelo usuário.")
     except WebDriverException as exc:
         logger.error("Erro crítico no WebDriver: %s", exc)
     finally:
         if driver:
             driver.quit()
             logger.info("WebDriver encerrado.")
+
+    # Envio de e-mail de resumo (extra) — apenas se houver alterações e senha configurada
+    if historico and parametros["senha_app"]:
+        usuario = parametros["usuario"]
+        corpo_linhas = [
+            f"Resumo do monitoramento — {len(historico)} alteração(ões) detectada(s).",
+            f"URL monitorada: {parametros['url']}",
+            "",
+        ]
+        for i, reg in enumerate(historico, 1):
+            corpo_linhas.append(f"[{i}] {reg['timestamp']}")
+            corpo_linhas.append(f"    Antes: {reg['valor_antigo']}")
+            corpo_linhas.append(f"    Depois: {reg['valor_novo']}")
+            corpo_linhas.append("")
+
+        enviar_email(
+            destinatario=usuario["email"],
+            senha_app=parametros["senha_app"],
+            assunto=f"Resumo do monitoramento — {parametros['url']}",
+            corpo="\n".join(corpo_linhas),
+        )
 
 if __name__ == "__main__":
     main()
