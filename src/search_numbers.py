@@ -15,7 +15,10 @@ def encontrar_numeros(texto: str) -> list:
     """
     Extrai qualquer sequência que contenha dígitos do texto.
     Captura: inteiros, decimais, monetários, horários (12:30:45),
-    datas (01/01/2026), porcentagens, etc. O(n)
+    datas (01/01/2026), porcentagens, etc.
+
+    Complexidade: O(n) onde n = len(texto). `re.findall` percorre
+    a string uma única vez com regex sem backtracking catastrófico.
     """
     padrao = r'[\d]+(?:[/:.,\-]\d+)*'
     return re.findall(padrao, texto)

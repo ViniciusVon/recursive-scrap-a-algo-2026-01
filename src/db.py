@@ -26,7 +26,10 @@ def inicializar_banco() -> None:
 
 
 def cadastrar_usuario(nome: str, email: str) -> int:
-    """Insere um novo usuário e retorna o id gerado. O(1)"""
+    """Insere um novo usuário e retorna o id gerado.
+
+    Complexidade: O(log n) — INSERT no B-tree do SQLite com n linhas.
+    """
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.execute(
             "INSERT INTO usuarios (nome, email) VALUES (?, ?)",
@@ -43,7 +46,10 @@ def listar_usuarios() -> list[tuple[int, str, str]]:
 
 
 def buscar_usuario_por_id(usuario_id: int) -> tuple[int, str, str] | None:
-    """Busca um usuário pelo id. O(1)"""
+    """Busca um usuário pelo id.
+
+    Complexidade: O(log n) — lookup por chave primária no B-tree do SQLite.
+    """
     with sqlite3.connect(DB_PATH) as conn:
         row = conn.execute(
             "SELECT id, nome, email FROM usuarios WHERE id = ?",

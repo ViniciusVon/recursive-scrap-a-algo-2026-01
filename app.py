@@ -49,7 +49,12 @@ def monitorar_preco(
     4. Se mudou → registra no Google Form e loga no console.
     5. Retorna o histórico de alterações ao encerrar (Ctrl+C).
 
-    O(1) por ciclo (leitura de um único elemento pelo XPath).
+    Complexidade:
+        - Setup (1 vez): O(n · d) — `selecionar_valor` lista e deduplica
+          valores varrendo todo o DOM via JS.
+        - Por ciclo: O(n) — `ler_valor_por_xpath` no DOM da página.
+          Em caso de alteração, soma O(m) pelo registro no form.
+        - Total após C ciclos: O(n · d + C · n).
     """
     logger.info("Iniciando monitoramento | URL: %s | Intervalo: %ds", url, INTERVALO_SEGUNDOS)
 
@@ -136,7 +141,11 @@ def monitorar_preco(
 def identificar_usuario() -> dict:
     """
     Solicita a identificação do usuário: cadastra um novo ou seleciona
-    um existente no banco. O(n) onde n = quantidade de usuários cadastrados.
+    um existente no banco.
+
+    Complexidade: O(u) onde u = usuários cadastrados — dominado pela
+    listagem inicial (`listar_usuarios`). A busca por ID e o cadastro
+    usam o índice B-tree do SQLite, O(log u) cada.
     """
     print("\n--- Identificação do Usuário ---\n")
 
@@ -182,7 +191,11 @@ def identificar_usuario() -> dict:
 def coletar_entradas() -> dict:
     """
     Solicita ao usuário todas as informações necessárias para o monitoramento.
-    Valida cada entrada antes de prosseguir. O(1) por campo.
+    Valida cada entrada antes de prosseguir.
+
+    Complexidade: O(u) — dominado por `identificar_usuario`. As validações
+    de URL e e-mail são lineares no tamanho da string (tratadas como O(1)
+    por terem tamanho limitado).
     """
     print("\n========================================")
     print("  Monitor de Preços via Selenium")

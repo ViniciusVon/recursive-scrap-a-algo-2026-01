@@ -18,6 +18,10 @@ def validar_nome_usuario(nome: str) -> bool:
 
 
 def validar_email(email: str) -> bool:
-    """Valida formato básico de e-mail. O(1)"""
+    """Valida formato básico de e-mail.
+
+    Complexidade: O(L) onde L = len(email). Como e-mails têm tamanho
+    limitado (RFC 5321 ≤ 254), é tratado como O(1) na prática.
+    """
     padrao = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$")
     return bool(padrao.match(email.strip()))
