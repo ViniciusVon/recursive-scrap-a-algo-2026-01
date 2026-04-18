@@ -1,3 +1,15 @@
+/**
+ * Percorre o DOM, identifica nós de texto visíveis contendo valores numéricos
+ * (como preços, percentuais, datas, horários e outros números monitoráveis)
+ * e retorna uma lista no formato:
+ *
+ * [{ text, xpath }, ...]
+ *
+ * Utilizado por src/value_selector.py via driver.execute_script()
+ * para localizar valores disponíveis na página e permitir sua seleção
+ * para monitoramento.
+ */
+
 function getXPath(el) {
     if (el === document.body) return '/html/body';
     var ix = 0;
