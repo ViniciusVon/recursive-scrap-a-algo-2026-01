@@ -1,13 +1,16 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import ConfigPage from './pages/ConfigPage';
-import DashboardPage from './pages/DashboardPage';
-import LoginPage from './pages/LoginPage';
-import SelectValuePage from './pages/SelectValuePage';
+import ErrorBoundary from './components/ErrorBoundary';
+import MonitorPage from './pages/MonitorPage';
+import SetupWizard from './pages/SetupWizard';
 
 /**
- * Shell da aplicação. Fase 1 usa roteamento por rotas simples; estado
- * compartilhado entre telas vai via navigate(state: ...).
- * Zustand/Context entra na Fase 2.
+ * Shell da aplicação.
+ *
+ * Duas páginas apenas:
+ *   - "/"                    → SetupWizard (usuário → URL → valor)
+ *   - "/monitor/:sessionId"  → MonitorPage  (preview + histórico ao vivo)
+ *
+ * O ErrorBoundary protege a árvore inteira.
  */
 export default function App() {
   return (
@@ -19,13 +22,13 @@ export default function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/config" element={<ConfigPage />} />
-          <Route path="/select/:sessionId" element={<SelectValuePage />} />
-          <Route path="/dashboard/:sessionId" element={<DashboardPage />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<SetupWizard />} />
+            <Route path="/monitor/:sessionId" element={<MonitorPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
     </div>
   );

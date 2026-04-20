@@ -7,6 +7,7 @@ import smtplib
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from typing import Optional
 
 from src.constants import SMTP_HOST, SMTP_PORT
 
@@ -48,6 +49,45 @@ def enviar_email(destinatario: str, senha_app: str, assunto: str, corpo: str) ->
     except smtplib.SMTPException as exc:
         logger.error("Erro ao enviar e-mail: %s", exc)
         return False
+
+
+def montar_resumo_sessao(
+    url: str,
+    valor_final: Optional[str],
+    historico: list,
+) -> tuple:
+    """
+    Gera (assunto, corpo) de um e-mail resumindo uma sessão de
+    monitoramento que acabou de ser encerrada.
+
+    `historico` é uma lista de objetos com atributos `.ciclo`,
+    `.timestamp`, `.valor_antigo`, `.valor_novo` (os `RegistroAlteracao`
+    do session_manager).
+
+    Complexidade: O(k), onde k é o número de alterações registradas.
+    """
+    linhas = [
+        "Resumo do monitoramento",
+        "-----------------------",
+        f"URL: {url}",
+        f"Valor final observado: {valor_final or '—'}",
+        f"Total de alterações: {len(historico)}",
+        "",
+    ]
+
+    if historico:
+        linhas.append("Histórico:")
+        for r in historico:
+            quando = r.timestamp.strftime("%d/%m/%Y %H:%M:%S")
+            linhas.append(
+                f"  [{quando}] ciclo {r.ciclo}: "
+                f"{r.valor_antigo} -> {r.valor_novo}"
+            )
+    else:
+        linhas.append("Nenhuma alteração foi registrada durante a sessão.")
+
+    assunto = f"Monitor de Preços — sessão encerrada ({len(historico)} alterações)"
+    return assunto, "\n".join(linhas)
 
 
 def montar_corpo_alteracao(url: str, antes: dict, depois: dict) -> str:

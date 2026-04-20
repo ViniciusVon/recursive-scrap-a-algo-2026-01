@@ -37,6 +37,16 @@ def criar_driver(headless: bool = False) -> webdriver.Chrome:
     opcoes.add_argument("--no-sandbox")
     opcoes.add_argument("--disable-dev-shm-usage")
     opcoes.add_argument("--window-size=1920,1080")
+    # Evita que o Chrome "pause" a aba quando a janela fica atrás de
+    # outras no macOS/Windows — sem isso os screenshots CDP podem sair
+    # congelados quando o usuário sai do foco da janela.
+    opcoes.add_argument(
+        "--disable-features=CalculateNativeWinOcclusion"
+    )
+    # Inicia minimizado para não roubar foco no instante em que abre.
+    # O usuário pode trazer pra frente manualmente se quiser.
+    if not headless:
+        opcoes.add_argument("--window-position=0,0")
 
     driver = webdriver.Chrome(options=opcoes)
     return driver
