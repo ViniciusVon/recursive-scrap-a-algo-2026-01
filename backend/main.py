@@ -15,7 +15,7 @@ Para rodar em desenvolvimento:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.routes import sessoes, usuarios
+from backend.routes import sessoes, usuarios, websocket
 from src.db import inicializar_banco
 
 app = FastAPI(
@@ -46,3 +46,4 @@ def health() -> dict:
 
 app.include_router(usuarios.router)
 app.include_router(sessoes.router)
+app.include_router(websocket.router)

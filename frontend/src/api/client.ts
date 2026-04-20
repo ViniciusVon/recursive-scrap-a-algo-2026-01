@@ -69,6 +69,8 @@ export const api = {
   obterSessao: (id: string) => request<Sessao>(`/sessoes/${id}`),
   listarValores: (id: string) =>
     request<ValorEncontrado[]>(`/sessoes/${id}/valores`),
+  screenshot: (id: string) =>
+    request<{ data: string }>(`/sessoes/${id}/screenshot`),
   selecionarValor: (id: string, xpath: string, text: string) =>
     request<Sessao>(`/sessoes/${id}/selecionar`, {
       method: 'POST',
