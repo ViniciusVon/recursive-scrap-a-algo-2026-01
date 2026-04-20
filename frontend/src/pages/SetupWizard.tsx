@@ -13,10 +13,27 @@
 import { useEffect, useState } from 'react';
 import {
   api,
+  mensagemDeErro,
   type Sessao,
+  type SessaoHistorica,
   type Usuario,
   type ValorEncontrado,
 } from '../api/client';
+import { toast } from '../store/toastStore';
+import { Skeleton, SkeletonList } from '../components/Skeleton';
+
+/** Chave do localStorage que lembra a última URL informada. */
+const LS_ULTIMA_URL = 'monitor.ultimaUrl';
+
+/** Valida forma básica de URL http(s). Reutilizado pelo input inline. */
+function urlValida(v: string): boolean {
+  try {
+    const u = new URL(v.trim());
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 type Step = 'usuario' | 'url' | 'valor';
 
@@ -116,29 +133,31 @@ function Steps({ atual }: { atual: Step }) {
 function StepUsuario({ onPronto }: { onPronto: (u: Usuario) => void }) {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [criando, setCriando] = useState(false);
 
+  const nomeOk = nome.trim().length >= 3;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   useEffect(() => {
     api
       .listarUsuarios()
       .then(setUsuarios)
-      .catch((e) => setErro(String(e)))
+      .catch((e) => toast.erro(mensagemDeErro(e)))
       .finally(() => setCarregando(false));
   }, []);
 
   async function cadastrar(e: React.FormEvent) {
     e.preventDefault();
-    setErro(null);
     setCriando(true);
     try {
       const novo = await api.criarUsuario(nome.trim(), email.trim());
+      toast.sucesso(`Bem-vindo, ${novo.nome}!`);
       onPronto(novo);
     } catch (e) {
-      setErro(String(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setCriando(false);
     }
@@ -148,7 +167,7 @@ function StepUsuario({ onPronto }: { onPronto: (u: Usuario) => void }) {
     <div className="grid gap-6 md:grid-cols-2">
       <section className="bg-white rounded-lg border border-gray-200 p-6">
         <h2 className="text-lg font-medium mb-4">Usuários cadastrados</h2>
-        {carregando && <p className="text-gray-500">Carregando...</p>}
+        {carregando && <SkeletonList linhas={3} />}
         {!carregando && usuarios.length === 0 && (
           <p className="text-gray-500">
             Nenhum usuário ainda. Cadastre ao lado.
@@ -181,6 +200,11 @@ function StepUsuario({ onPronto }: { onPronto: (u: Usuario) => void }) {
               minLength={3}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
             />
+            {nome.length > 0 && !nomeOk && (
+              <span className="text-xs text-red-600">
+                Mínimo 3 caracteres.
+              </span>
+            )}
           </label>
           <label className="block">
             <span className="text-sm text-gray-700">E-mail</span>
@@ -191,16 +215,18 @@ function StepUsuario({ onPronto }: { onPronto: (u: Usuario) => void }) {
               required
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
             />
+            {email.length > 0 && !emailOk && (
+              <span className="text-xs text-red-600">E-mail inválido.</span>
+            )}
           </label>
           <button
             type="submit"
-            disabled={criando}
+            disabled={criando || !nomeOk || !emailOk}
             className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
           >
             {criando ? 'Criando...' : 'Cadastrar e continuar'}
           </button>
         </form>
-        {erro && <p className="text-red-600 text-sm mt-3">{erro}</p>}
       </section>
     </div>
   );
@@ -219,20 +245,43 @@ function StepUrl({
   onPronto: (s: Sessao) => void;
   onVoltar: () => void;
 }) {
-  const [url, setUrl] = useState('');
+  // Recupera a última URL usada por este navegador. É apenas um
+  // valor inicial — o usuário pode apagar livremente.
+  const [url, setUrl] = useState(
+    () => localStorage.getItem(LS_ULTIMA_URL) ?? '',
+  );
   const [headless, setHeadless] = useState(true);
   const [iniciando, setIniciando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+
+  const [historico, setHistorico] = useState<SessaoHistorica[]>([]);
+  const [carregandoHist, setCarregandoHist] = useState(true);
+
+  const urlOk = urlValida(url);
+
+  useEffect(() => {
+    // Histórico persistente do usuário — permite reusar uma URL antiga
+    // num clique. Falha silenciosa: não é crítico.
+    api
+      .sessoesDoUsuario(usuario.id)
+      .then(setHistorico)
+      .catch(() => {})
+      .finally(() => setCarregandoHist(false));
+  }, [usuario.id]);
 
   async function iniciar(e: React.FormEvent) {
     e.preventDefault();
-    setErro(null);
+    if (!urlOk) {
+      toast.aviso('Informe uma URL http(s) válida.');
+      return;
+    }
     setIniciando(true);
     try {
-      const sessao = await api.criarSessao(usuario.id, url.trim(), headless);
+      const urlLimpa = url.trim();
+      const sessao = await api.criarSessao(usuario.id, urlLimpa, headless);
+      localStorage.setItem(LS_ULTIMA_URL, urlLimpa);
       onPronto(sessao);
     } catch (e) {
-      setErro(String(e));
+      toast.erro(mensagemDeErro(e));
     } finally {
       setIniciando(false);
     }
@@ -254,8 +303,17 @@ function StepUrl({
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://site.com/produto"
             required
-            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
+            className={`mt-1 w-full px-3 py-2 border rounded ${
+              url.length > 0 && !urlOk
+                ? 'border-red-400'
+                : 'border-gray-300'
+            }`}
           />
+          {url.length > 0 && !urlOk && (
+            <span className="text-xs text-red-600">
+              Use http:// ou https://
+            </span>
+          )}
         </label>
 
         <fieldset>
@@ -298,7 +356,7 @@ function StepUrl({
           </button>
           <button
             type="submit"
-            disabled={iniciando}
+            disabled={iniciando || !urlOk}
             className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
           >
             {iniciando ? 'Abrindo navegador...' : 'Continuar'}
@@ -306,8 +364,67 @@ function StepUrl({
         </div>
       </form>
 
-      {erro && <p className="text-red-600 text-sm mt-3">{erro}</p>}
+      <SessoesAnteriores
+        carregando={carregandoHist}
+        historico={historico}
+        onReusar={(u) => setUrl(u)}
+      />
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Widget — sessões anteriores do usuário
+// ---------------------------------------------------------------------------
+
+function SessoesAnteriores({
+  carregando,
+  historico,
+  onReusar,
+}: {
+  carregando: boolean;
+  historico: SessaoHistorica[];
+  onReusar: (url: string) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+
+  if (carregando) return null;
+  if (historico.length === 0) return null;
+
+  return (
+    <details
+      open={aberto}
+      onToggle={(e) => setAberto((e.target as HTMLDetailsElement).open)}
+      className="mt-6 border-t border-gray-200 pt-4"
+    >
+      <summary className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-700 select-none">
+        {aberto ? '▾' : '▸'} Sessões anteriores ({historico.length})
+      </summary>
+      <ul className="mt-3 space-y-2">
+        {historico.slice(0, 10).map((s) => (
+          <li
+            key={s.id}
+            className="text-sm border border-gray-200 rounded p-2 flex items-center justify-between gap-2"
+          >
+            <div className="min-w-0">
+              <p className="truncate font-mono text-xs">{s.url}</p>
+              <p className="text-xs text-gray-500">
+                {new Date(s.encerrada_em).toLocaleString('pt-BR')} •{' '}
+                {s.total_alteracoes} alterações • final:{' '}
+                <span className="font-mono">{s.valor_final ?? '—'}</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onReusar(s.url)}
+              className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-indigo-50"
+            >
+              Reusar URL
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -328,7 +445,6 @@ function StepValor({
   const [preview, setPreview] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [selecionando, setSelecionando] = useState<number | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     // Busca valores + screenshot em paralelo. O screenshot é apenas
@@ -344,7 +460,7 @@ function StepValor({
       if (resValores.status === 'fulfilled') {
         setValores(resValores.value);
       } else {
-        setErro(String(resValores.reason));
+        toast.erro(mensagemDeErro(resValores.reason));
       }
       if (resScreenshot.status === 'fulfilled') {
         setPreview(resScreenshot.value.data);
@@ -357,13 +473,13 @@ function StepValor({
   }, [sessao.id]);
 
   async function selecionar(v: ValorEncontrado) {
-    setErro(null);
     setSelecionando(v.indice);
     try {
       await api.selecionarValor(sessao.id, v.xpath, v.text);
+      toast.sucesso('Monitoramento iniciado! Abrindo painel ao vivo...');
       onPronto();
     } catch (e) {
-      setErro(String(e));
+      toast.erro(mensagemDeErro(e));
       setSelecionando(null);
     }
   }
@@ -393,17 +509,22 @@ function StepValor({
             alt="Prévia do site monitorado"
             className="w-full h-full object-contain"
           />
+        ) : carregando ? (
+          <Skeleton className="w-full h-full !rounded-none" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
-            {carregando ? 'Capturando prévia do site...' : 'Sem prévia.'}
+            Sem prévia.
           </div>
         )}
       </div>
 
       {carregando && (
-        <p className="text-gray-500">Extraindo valores da página...</p>
+        <div className="grid gap-2 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12" />
+          ))}
+        </div>
       )}
-      {erro && <p className="text-red-600 text-sm mb-3">{erro}</p>}
 
       {!carregando && valores.length === 0 && (
         <p className="text-gray-500">Nenhum valor numérico encontrado.</p>

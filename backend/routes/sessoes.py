@@ -6,12 +6,18 @@ from selenium.common.exceptions import WebDriverException
 from backend.schemas import (
     RegistroHistorico,
     SelecaoIn,
+    SessaoHistoricaOut,
     SessaoIn,
     SessaoOut,
     ValorEncontrado,
 )
 from backend.services.session_manager import manager
-from src.db import buscar_usuario_por_id
+from src.db import (
+    buscar_usuario_por_id,
+    gravar_sessao_historica,
+    listar_alteracoes_historicas,
+    obter_sessao_historica,
+)
 from src.notifier import carregar_senha_app, enviar_email, montar_resumo_sessao
 from src.utils import validar_url
 from src.value_selector import listar_valores_com_xpath
@@ -137,20 +143,43 @@ def get_historico(session_id: str) -> list[RegistroHistorico]:
 @router.delete("/{session_id}", status_code=204)
 def delete_sessao(session_id: str) -> None:
     """
-    Encerra a sessão e dispara um e-mail com o resumo (histórico de
-    alterações) para o usuário dono da sessão. Se o e-mail falhar, a
-    sessão ainda é encerrada — o envio é best-effort.
+    Encerra a sessão:
+      1. Persiste o histórico em SQLite (para consulta posterior).
+      2. Para a thread de monitoramento e fecha o driver.
+      3. Envia e-mail de resumo para o usuário (best-effort).
     """
+    from datetime import datetime as _dt
+
     estado = manager.obter(session_id)
     if not estado:
         raise HTTPException(status_code=404, detail="Sessão não encontrada.")
 
-    # Snapshot antes do encerramento: o manager limpa o driver e os
-    # recursos, mas os dados que vamos enviar por e-mail ficam aqui.
+    # Snapshot antes do encerramento.
     url = estado.url
+    valor_inicial = estado.valor_inicial
     valor_final = estado.valor_atual
     historico = list(estado.historico)
-    usuario_row = buscar_usuario_por_id(estado.usuario_id)
+    xpath_monitorado = estado.xpath_monitorado
+    usuario_id = estado.usuario_id
+    iniciada_em = estado.iniciada_em
+    usuario_row = buscar_usuario_por_id(usuario_id)
+
+    # Persistir histórico ANTES de encerrar — se o driver.quit() levantar,
+    # pelo menos os dados já estão salvos.
+    try:
+        gravar_sessao_historica(
+            sessao_id=session_id,
+            usuario_id=usuario_id,
+            url=url,
+            xpath_monitorado=xpath_monitorado,
+            valor_inicial=valor_inicial,
+            valor_final=valor_final,
+            iniciada_em=iniciada_em.isoformat(),
+            encerrada_em=_dt.now().isoformat(),
+            alteracoes=historico,
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Falha ao persistir histórico da sessão %s", session_id)
 
     ok = manager.encerrar(session_id)
     if not ok:
@@ -172,3 +201,65 @@ def delete_sessao(session_id: str) -> None:
                 )
     except Exception:  # noqa: BLE001
         logger.exception("Falha ao enviar e-mail de resumo da sessão %s", session_id)
+
+
+# ---------------------------------------------------------------------------
+# Histórico persistente
+# ---------------------------------------------------------------------------
+
+
+def _row_to_sessao_historica(row: tuple) -> SessaoHistoricaOut:
+    (
+        id_,
+        usuario_id,
+        url,
+        xpath_monitorado,
+        valor_inicial,
+        valor_final,
+        total_alteracoes,
+        iniciada_em,
+        encerrada_em,
+    ) = row
+    return SessaoHistoricaOut(
+        id=id_,
+        usuario_id=usuario_id,
+        url=url,
+        xpath_monitorado=xpath_monitorado,
+        valor_inicial=valor_inicial,
+        valor_final=valor_final,
+        total_alteracoes=total_alteracoes,
+        iniciada_em=iniciada_em,
+        encerrada_em=encerrada_em,
+    )
+
+
+@router.get(
+    "/historicas/{sessao_id}",
+    response_model=SessaoHistoricaOut,
+    tags=["historico"],
+)
+def get_sessao_historica(sessao_id: str) -> SessaoHistoricaOut:
+    """Detalhes de uma sessão encerrada no passado."""
+    row = obter_sessao_historica(sessao_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Sessão histórica não encontrada.")
+    return _row_to_sessao_historica(row)
+
+
+@router.get(
+    "/historicas/{sessao_id}/alteracoes",
+    response_model=list[RegistroHistorico],
+    tags=["historico"],
+)
+def get_alteracoes_historicas(sessao_id: str) -> list[RegistroHistorico]:
+    """Alterações registradas em uma sessão histórica."""
+    rows = listar_alteracoes_historicas(sessao_id)
+    return [
+        RegistroHistorico(
+            ciclo=ciclo,
+            timestamp=ts,
+            valor_antigo=va,
+            valor_novo=vn,
+        )
+        for ciclo, ts, va, vn in rows
+    ]
