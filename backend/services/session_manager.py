@@ -4,7 +4,7 @@ Gerenciador de sessões de monitoramento.
 Mantém em memória um registry { session_id → SessionState }. Cada sessão
 carrega seu próprio WebDriver, o XPath selecionado, o valor atual e um
 histórico de alterações. A thread daemon do monitor:
-    - A cada 2s captura um screenshot e emite para todos os subscribers.
+    - A cada 1s captura um screenshot e emite para todos os subscribers.
     - A cada INTERVALO_SEGUNDOS (15s) refresca a página, relê o valor
       pelo XPath e emite `ciclo` (e `alteracao` se o valor mudou).
 
@@ -34,8 +34,9 @@ from src.utils import criar_driver
 from src.value_selector import ler_valor_por_xpath
 
 
-# Intervalo curto entre screenshots (segundos)
-INTERVALO_SCREENSHOT = 2
+# Intervalo curto entre screenshots (segundos). 1s dá sensação de
+# tempo real no painel sem sobrecarregar o CDP (cada captura é ~50ms).
+INTERVALO_SCREENSHOT = 1
 
 
 @dataclass
