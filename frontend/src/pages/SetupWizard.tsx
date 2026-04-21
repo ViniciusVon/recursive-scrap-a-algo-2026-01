@@ -27,8 +27,8 @@ import {
   usuarioInSchema,
 } from '../api/schemas';
 
-/** Chave do localStorage que lembra a última URL informada. */
-const LS_ULTIMA_URL = 'monitor.ultimaUrl';
+/** Chave do localStorage que lembra a última URL informada, por usuário. */
+const lsUltimaUrl = (usuarioId: number) => `monitor.ultimaUrl.${usuarioId}`;
 
 type Step = 'usuario' | 'url' | 'valor';
 
@@ -245,7 +245,7 @@ function StepUrl({
   // Recupera a última URL usada por este navegador. É apenas um
   // valor inicial — o usuário pode apagar livremente.
   const [url, setUrl] = useState(
-    () => localStorage.getItem(LS_ULTIMA_URL) ?? '',
+    () => localStorage.getItem(lsUltimaUrl(usuario.id)) ?? '',
   );
   const [headless, setHeadless] = useState(true);
   const [iniciando, setIniciando] = useState(false);
@@ -276,7 +276,7 @@ function StepUrl({
     try {
       const urlLimpa = url.trim();
       const sessao = await api.criarSessao(usuario.id, urlLimpa, headless);
-      localStorage.setItem(LS_ULTIMA_URL, urlLimpa);
+      localStorage.setItem(lsUltimaUrl(usuario.id), urlLimpa);
       onPronto(sessao);
     } catch (e) {
       toast.erro(mensagemDeErro(e));
