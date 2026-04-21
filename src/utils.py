@@ -2,9 +2,12 @@
 Utilitários gerais — WebDriver e validação de URL.
 """
 
+import os
 import re
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 
 # ---------------------------------------------------------------------------
 # Utilitários de validação   O(1) por chamada
@@ -48,5 +51,19 @@ def criar_driver(headless: bool = False) -> webdriver.Chrome:
     if not headless:
         opcoes.add_argument("--window-position=0,0")
 
-    driver = webdriver.Chrome(options=opcoes)
+    # Em containers ARM64 (Docker Desktop no Apple Silicon), o Selenium
+    # Manager não tem binário compatível e falha com
+    # "Unsupported platform/architecture combination: linux/aarch64".
+    # As variáveis `CHROME_BIN` / `CHROMEDRIVER_BIN` são setadas no
+    # Dockerfile.backend e apontam para os binários instalados via apt;
+    # passamos explicitamente pra pular a descoberta automática.
+    # Fora do container, ambas ficam ausentes e caímos no fluxo normal
+    # do Selenium Manager (que já funciona em macOS/Windows/x86_64).
+    chrome_bin = os.environ.get("CHROME_BIN")
+    driver_bin = os.environ.get("CHROMEDRIVER_BIN")
+    if chrome_bin:
+        opcoes.binary_location = chrome_bin
+    service = Service(executable_path=driver_bin) if driver_bin else None
+
+    driver = webdriver.Chrome(options=opcoes, service=service)
     return driver
