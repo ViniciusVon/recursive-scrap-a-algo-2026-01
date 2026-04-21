@@ -63,9 +63,11 @@ export function useSessionWS(sessionId: string | undefined): void {
       };
 
       ws.onerror = () => {
-        // onerror dispara SEMPRE junto com onclose; deixamos a
-        // decisão de reconnect pro onclose e só marcamos o estado aqui
-        // se ainda não tiver aberto.
+        // onerror dispara junto com onclose em vários casos — inclusive
+        // quando o servidor fecha a conexão após emitir `encerrada`
+        // (alguns navegadores tratam o close remoto como falha). Se já
+        // sabemos que a sessão morreu normalmente, não é erro.
+        if (encerrado) return;
         if (ws && ws.readyState !== WebSocket.OPEN) {
           setConn('erro', 'Falha na conexão WebSocket.');
         }
