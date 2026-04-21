@@ -14,24 +14,62 @@ from src.constants import SMTP_HOST, SMTP_PORT
 logger = logging.getLogger(__name__)
 
 
-def carregar_senha_app() -> str:
-    """Carrega a senha de app do Gmail a partir do arquivo .env. O(1)"""
-    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
-    if os.path.exists(env_path):
-        with open(env_path) as f:
-            for linha in f:
-                if linha.startswith("GMAIL_APP_PASSWORD="):
-                    return linha.split("=", 1)[1].strip()
+def _ler_env(chave: str) -> str:
+    """Leitor simples de chave=valor em `.env` (O(n) nas linhas do arquivo)."""
+    env_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", ".env"
+    )
+    if not os.path.exists(env_path):
+        return ""
+    prefixo = f"{chave}="
+    with open(env_path) as f:
+        for linha in f:
+            if linha.startswith(prefixo):
+                return linha.split("=", 1)[1].strip()
     return ""
 
 
-def enviar_email(destinatario: str, senha_app: str, assunto: str, corpo: str) -> bool:
+def carregar_senha_app() -> str:
+    """Carrega `GMAIL_APP_PASSWORD` do `.env`. O(1) amortizado."""
+    return _ler_env("GMAIL_APP_PASSWORD")
+
+
+def carregar_remetente() -> str:
+    """
+    Email da conta que autentica no SMTP.
+
+    Tenta `GMAIL_USER`; se não existir, tenta `GMAIL_FROM`. Vazio
+    se não estiver configurado — nesse caso o caller deve decidir
+    se pula o envio.
+    """
+    return _ler_env("GMAIL_USER") or _ler_env("GMAIL_FROM")
+
+
+def enviar_email(
+    destinatario: str,
+    senha_app: str,
+    assunto: str,
+    corpo: str,
+    remetente: Optional[str] = None,
+) -> bool:
     """
     Envia um e-mail via Gmail SMTP.
-    O remetente é o próprio destinatário (usa a conta do usuário). O(1)
+
+    A autenticação é feita com `remetente` + `senha_app` — essa é a
+    conta dona da senha de app do `.env`. O e-mail sai **do** remetente
+    e é entregue **ao** `destinatario`, que pode ser qualquer endereço.
+
+    Se `remetente` não for passado, cai pro `GMAIL_USER` do `.env`; se
+    mesmo assim estiver vazio, usa o próprio destinatário (comportamento
+    antigo, que só funciona quando o destinatário é o dono da senha).
+
+    O(1).
     """
+    if not remetente:
+        remetente = carregar_remetente() or destinatario
+
     msg = MIMEMultipart()
-    msg["From"] = destinatario
+    msg["From"] = remetente
     msg["To"] = destinatario
     msg["Subject"] = assunto
     msg.attach(MIMEText(corpo, "plain", "utf-8"))
@@ -39,12 +77,18 @@ def enviar_email(destinatario: str, senha_app: str, assunto: str, corpo: str) ->
     try:
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as servidor:
             servidor.starttls()
-            servidor.login(destinatario, senha_app)
+            servidor.login(remetente, senha_app)
             servidor.send_message(msg)
-        logger.info("LOG | E-mail enviado para %s", destinatario)
+        logger.info(
+            "LOG | E-mail enviado de %s para %s", remetente, destinatario
+        )
         return True
     except smtplib.SMTPAuthenticationError:
-        logger.error("Falha de autenticação SMTP. Verifique a senha de app do Gmail.")
+        logger.error(
+            "Falha de autenticação SMTP para %s. "
+            "Verifique GMAIL_USER e GMAIL_APP_PASSWORD no .env.",
+            remetente,
+        )
         return False
     except smtplib.SMTPException as exc:
         logger.error("Erro ao enviar e-mail: %s", exc)

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
+import ToastContainer from './components/ToastContainer';
 import MonitorPage from './pages/MonitorPage';
 import SetupWizard from './pages/SetupWizard';
 
@@ -15,13 +16,14 @@ import SetupWizard from './pages/SetupWizard';
 export default function App() {
   return (
     <div className="min-h-screen">
-      <header className="bg-white border-b border-gray-200 px-6 py-3">
-        <h1 className="text-lg font-semibold text-gray-800">
+      <ToastContainer />
+      <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
+        <h1 className="text-base sm:text-lg font-semibold text-gray-800">
           Monitor de Preços — <span className="text-indigo-600">MVP</span>
         </h1>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <ErrorBoundary>
           <Routes>
             <Route path="/" element={<SetupWizard />} />

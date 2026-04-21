@@ -65,3 +65,20 @@ class RegistroHistorico(BaseModel):
     timestamp: datetime
     valor_antigo: str
     valor_novo: str
+
+
+# ---------------------------------------------------------------------------
+# Histórico persistente de sessões encerradas
+# ---------------------------------------------------------------------------
+
+
+class SessaoHistoricaOut(BaseModel):
+    id: str
+    usuario_id: int
+    url: str
+    xpath_monitorado: Optional[str] = None
+    valor_inicial: Optional[str] = None
+    valor_final: Optional[str] = None
+    total_alteracoes: int
+    iniciada_em: datetime
+    encerrada_em: datetime

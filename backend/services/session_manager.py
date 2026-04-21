@@ -56,6 +56,8 @@ class SessionState:
     status: str = "iniciada"
     xpath_monitorado: Optional[str] = None
     valor_atual: Optional[str] = None
+    valor_inicial: Optional[str] = None
+    iniciada_em: datetime = field(default_factory=datetime.now)
     valores_encontrados: List[dict] = field(default_factory=list)
     historico: List[RegistroAlteracao] = field(default_factory=list)
     ciclo: int = 0
@@ -134,6 +136,7 @@ class SessionManager:
 
         estado.xpath_monitorado = xpath
         estado.valor_atual = valor_inicial
+        estado.valor_inicial = valor_inicial
         estado.status = "monitorando"
 
         thread = threading.Thread(

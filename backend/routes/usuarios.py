@@ -2,10 +2,11 @@
 
 from fastapi import APIRouter, HTTPException
 
-from backend.schemas import UsuarioIn, UsuarioOut
+from backend.schemas import SessaoHistoricaOut, UsuarioIn, UsuarioOut
 from src.db import (
     buscar_usuario_por_id,
     cadastrar_usuario,
+    listar_sessoes_historicas,
     listar_usuarios,
 )
 from src.validators import validar_nome_usuario
@@ -39,3 +40,28 @@ def get_usuario(usuario_id: int) -> UsuarioOut:
     if not linha:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     return UsuarioOut(id=linha[0], nome=linha[1], email=linha[2])
+
+
+@router.get("/{usuario_id}/sessoes", response_model=list[SessaoHistoricaOut])
+def get_sessoes_usuario(usuario_id: int) -> list[SessaoHistoricaOut]:
+    """
+    Lista as sessões encerradas do usuário, mais recentes primeiro.
+    Usado pelo wizard para mostrar o "histórico" ao retornar usuário.
+    """
+    if not buscar_usuario_por_id(usuario_id):
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    rows = listar_sessoes_historicas(usuario_id)
+    return [
+        SessaoHistoricaOut(
+            id=r[0],
+            usuario_id=r[1],
+            url=r[2],
+            xpath_monitorado=r[3],
+            valor_inicial=r[4],
+            valor_final=r[5],
+            total_alteracoes=r[6],
+            iniciada_em=r[7],
+            encerrada_em=r[8],
+        )
+        for r in rows
+    ]
