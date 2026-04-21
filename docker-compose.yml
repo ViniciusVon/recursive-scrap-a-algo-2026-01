@@ -4,7 +4,12 @@
 #   docker compose up --build
 # Depois abra http://localhost:5173.
 #
-# Volume `dados` preserva o SQLite entre reinícios.
+# Nota sobre persistência: o SQLite é efêmero por container nesta
+# configuração. Para a entrega (MVP acadêmico) isso é suficiente.
+# Se quisermos persistir entre `down/up`, o caminho correto é montar
+# apenas o arquivo do banco via bind mount (ex.: `./dados.db:/app/dados.db`),
+# nunca um volume em `/app`, pois isso sobrescreve o código da imagem
+# com o conteúdo da primeira execução (shadow do código-fonte).
 services:
   backend:
     build:
@@ -19,10 +24,6 @@ services:
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
     ports:
       - "8000:8000"
-    volumes:
-      # O DB é criado ao lado do src/db.py (../dados.db). Montamos um
-      # volume nomeado nesse caminho pra persistir entre containers.
-      - dados:/app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
@@ -43,6 +44,3 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-
-volumes:
-  dados:
