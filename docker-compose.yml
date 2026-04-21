@@ -1,0 +1,48 @@
+# Stack completa: backend FastAPI + frontend Nginx.
+#
+# Uso:
+#   docker compose up --build
+# Depois abra http://localhost:5173.
+#
+# Volume `dados` preserva o SQLite entre reinícios.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      # CORS aceita a origem do frontend em dev local.
+      CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+      # Preencha com o e-mail remetente e a senha de app do Gmail em
+      # um `.env` ao lado deste arquivo — o compose carrega automagicamente.
+      GMAIL_USER: ${GMAIL_USER:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      # O DB é criado ao lado do src/db.py (../dados.db). Montamos um
+      # volume nomeado nesse caminho pra persistir entre containers.
+      - dados:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Em container-to-container, o frontend chama o backend pelo
+        # nome do serviço. Porém, o bundle roda no NAVEGADOR do usuário,
+        # que enxerga o backend via `localhost:8000` (mapeado acima).
+        VITE_API_BASE_URL: "http://localhost:8000"
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  dados:

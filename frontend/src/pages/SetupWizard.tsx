@@ -21,19 +21,14 @@ import {
 } from '../api/client';
 import { toast } from '../store/toastStore';
 import { Skeleton, SkeletonList } from '../components/Skeleton';
+import {
+  primeiraMensagem,
+  sessaoInSchema,
+  usuarioInSchema,
+} from '../api/schemas';
 
 /** Chave do localStorage que lembra a última URL informada. */
 const LS_ULTIMA_URL = 'monitor.ultimaUrl';
-
-/** Valida forma básica de URL http(s). Reutilizado pelo input inline. */
-function urlValida(v: string): boolean {
-  try {
-    const u = new URL(v.trim());
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
 
 type Step = 'usuario' | 'url' | 'valor';
 
@@ -138,8 +133,12 @@ function StepUsuario({ onPronto }: { onPronto: (u: Usuario) => void }) {
   const [email, setEmail] = useState('');
   const [criando, setCriando] = useState(false);
 
-  const nomeOk = nome.trim().length >= 3;
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  // Valida o formulário inteiro com Zod; erros específicos aparecem
+  // abaixo de cada campo via `safeParse` individual.
+  const erroNome = primeiraMensagem(usuarioInSchema.shape.nome, nome);
+  const erroEmail = primeiraMensagem(usuarioInSchema.shape.email, email);
+  const nomeOk = nome.length > 0 && !erroNome;
+  const emailOk = email.length > 0 && !erroEmail;
 
   useEffect(() => {
     api
@@ -200,10 +199,8 @@ function StepUsuario({ onPronto }: { onPronto: (u: Usuario) => void }) {
               minLength={3}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
             />
-            {nome.length > 0 && !nomeOk && (
-              <span className="text-xs text-red-600">
-                Mínimo 3 caracteres.
-              </span>
+            {nome.length > 0 && erroNome && (
+              <span className="text-xs text-red-600">{erroNome}</span>
             )}
           </label>
           <label className="block">
@@ -215,8 +212,8 @@ function StepUsuario({ onPronto }: { onPronto: (u: Usuario) => void }) {
               required
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded"
             />
-            {email.length > 0 && !emailOk && (
-              <span className="text-xs text-red-600">E-mail inválido.</span>
+            {email.length > 0 && erroEmail && (
+              <span className="text-xs text-red-600">{erroEmail}</span>
             )}
           </label>
           <button
@@ -256,7 +253,8 @@ function StepUrl({
   const [historico, setHistorico] = useState<SessaoHistorica[]>([]);
   const [carregandoHist, setCarregandoHist] = useState(true);
 
-  const urlOk = urlValida(url);
+  const erroUrl = primeiraMensagem(sessaoInSchema.shape.url, url);
+  const urlOk = url.length > 0 && !erroUrl;
 
   useEffect(() => {
     // Histórico persistente do usuário — permite reusar uma URL antiga
@@ -271,7 +269,7 @@ function StepUrl({
   async function iniciar(e: React.FormEvent) {
     e.preventDefault();
     if (!urlOk) {
-      toast.aviso('Informe uma URL http(s) válida.');
+      toast.aviso(erroUrl ?? 'Informe uma URL http(s) válida.');
       return;
     }
     setIniciando(true);
@@ -309,10 +307,8 @@ function StepUrl({
                 : 'border-gray-300'
             }`}
           />
-          {url.length > 0 && !urlOk && (
-            <span className="text-xs text-red-600">
-              Use http:// ou https://
-            </span>
+          {url.length > 0 && erroUrl && (
+            <span className="text-xs text-red-600">{erroUrl}</span>
           )}
         </label>
 
