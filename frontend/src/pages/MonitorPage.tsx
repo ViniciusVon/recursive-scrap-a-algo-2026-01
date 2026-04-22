@@ -140,9 +140,6 @@ export default function MonitorPage() {
       <section className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
         <h3 className="font-medium mb-2">Navegador (preview)</h3>
         <BrowserPreview />
-        <p className="text-xs text-gray-400 mt-2">
-          Screenshots atualizam a cada 2s enquanto a sessão estiver ativa.
-        </p>
       </section>
 
       <section className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">

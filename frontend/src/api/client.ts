@@ -22,16 +22,50 @@ export class ApiError extends Error {
   }
 }
 
+/** Intervalos (ms) de retry quando a primeira tentativa falha de rede. */
+const RETRY_DELAYS_MS = [250, 750];
+
+/** Espera utilitária — exportada só para facilitar mock em testes. */
+export const _sleep = (ms: number): Promise<void> =>
+  new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Métodos idempotentes podem ser repetidos sem risco; POST/DELETE não
+ * devem ser refeitos automaticamente porque podem criar duplicatas ou
+ * remover algo que já foi removido na primeira tentativa bem sucedida.
+ */
+function ehIdempotente(method: string | undefined): boolean {
+  const m = (method ?? 'GET').toUpperCase();
+  return m === 'GET' || m === 'HEAD' || m === 'OPTIONS';
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
-  try {
-    res = await fetch(`${BASE_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-      ...init,
-    });
-  } catch {
-    // Falha de rede (servidor desligado, CORS, offline...).
-    throw new ApiError(0, 'Não consegui falar com o servidor. Verifique se o backend está rodando.');
+  // Retry apenas em falha de rede (fetch rejeitou) e apenas em verbos
+  // idempotentes. Não retryamos erros HTTP — se o servidor já respondeu
+  // 5xx, a lógica de negócio rodou pelo menos parcialmente.
+  const retries = ehIdempotente(init?.method) ? RETRY_DELAYS_MS : [];
+  let tentativa = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      res = await fetch(`${BASE_URL}${path}`, {
+        headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+        ...init,
+      });
+      break;
+    } catch {
+      if (tentativa < retries.length) {
+        await _sleep(retries[tentativa]);
+        tentativa += 1;
+        continue;
+      }
+      // Falha de rede persistente (servidor desligado, CORS, offline...).
+      throw new ApiError(
+        0,
+        'Não consegui falar com o servidor. Verifique se o backend está rodando.',
+      );
+    }
   }
   if (!res.ok) {
     // FastAPI devolve { detail: "..." } em erros. Tenta extrair; se

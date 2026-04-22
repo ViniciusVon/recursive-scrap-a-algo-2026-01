@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1.7
+#
+# Imagem do backend FastAPI + Selenium.
+#
+# Base: python:3.12-slim + Chromium + ChromeDriver. Evitamos
+# chromedriver via webdriver-manager (que baixa em runtime) porque
+# dentro de um container queremos imagem auto-contida.
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Dependências de sistema para Chromium headless. Os pacotes `chromium`
+# e `chromium-driver` do debian-slim casam na versão, então o Selenium
+# não reclama de mismatch.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       chromium \
+       chromium-driver \
+       fonts-liberation \
+       libnss3 \
+       libxss1 \
+       libasound2 \
+       ca-certificates \
+       curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# O Selenium 4 lê o binário do Chrome via PATH quando usamos Service()
+# sem argumentos — já é o default aqui.
+ENV CHROME_BIN=/usr/bin/chromium \
+    CHROMEDRIVER_BIN=/usr/bin/chromedriver
+
+WORKDIR /app
+
+# Instala dependências em camada separada pra aproveitar o cache.
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
+
+# Copia só o necessário pra rodar a API.
+COPY backend/ ./backend/
+COPY src/ ./src/
+
+EXPOSE 8000
+
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

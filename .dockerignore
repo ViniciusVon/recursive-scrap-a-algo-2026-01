@@ -1,0 +1,15 @@
+# Reduz contexto enviado ao daemon Docker — builds mais rápidos.
+.git
+.gitignore
+.venv
+__pycache__
+*.pyc
+node_modules
+frontend/node_modules
+frontend/dist
+dist
+dados.db
+*.log
+.vscode
+.idea
+.DS_Store

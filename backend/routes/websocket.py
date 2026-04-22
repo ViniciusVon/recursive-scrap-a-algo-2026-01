@@ -5,7 +5,7 @@ Eventos emitidos pelo backend (JSON):
     - {"type": "inicial", ...}     -> snapshot ao conectar
     - {"type": "ciclo", ...}       -> a cada ciclo de monitoramento (~15s)
     - {"type": "alteracao", ...}   -> quando o valor mudou
-    - {"type": "screenshot", ...}  -> a cada 2s, base64 PNG
+    - {"type": "screenshot", ...}  -> a cada 1s, base64 PNG
     - {"type": "encerrada"}        -> sessão foi encerrada via DELETE
 """
 
