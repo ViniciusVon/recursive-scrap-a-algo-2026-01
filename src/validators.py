@@ -23,5 +23,5 @@ def validar_email(email: str) -> bool:
     Complexidade: O(L) onde L = len(email). Como e-mails têm tamanho
     limitado (RFC 5321 ≤ 254), é tratado como O(1) na prática.
     """
-    padrao = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$")
+    padrao = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(\.[a-zA-Z]{2})?$")
     return bool(padrao.match(email.strip()))

@@ -20,10 +20,9 @@ def validar_url(url: str) -> bool:
     (URLs raramente passam de ~2000 chars), então é tratado como O(1).
     """
     padrao = re.compile(
-        r"^(https?://)"           # esquema obrigatório
-        r"([a-zA-Z0-9\-\.]+)"    # domínio
-        r"(\.[a-zA-Z]{2,})"      # TLD
-        r"(:\d+)?(/.*)?$"        # porta e caminho opcionais
+        r"^(https?://)"                                 # esquema obrigatório (http ou https)
+        r"(localhost|([a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}))" # domínio: aceita 'localhost' OU 'dominio.tld'
+        r"(:\d+)?(/.*)?$"                               # porta e caminho opcionais
     )
     return bool(padrao.match(url.strip()))
 
