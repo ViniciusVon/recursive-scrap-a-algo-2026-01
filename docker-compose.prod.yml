@@ -6,11 +6,11 @@ services:
     restart: unless-stopped
     shm_size: '2gb'
     environment:
-      CORS_ORIGINS: "https://api-a-algo-2026-1.duckdns.org"
+      CORS_ORIGINS: "https://a-algo-2026-1.duckdns.org"
       GMAIL_USER: ${GMAIL_USER:-}
       GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
@@ -21,7 +21,7 @@ services:
     image: ghcr.io/ViniciusVon/recursive-scrap-a-algo-2026-01-frontend:latest
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "127.0.0.1:5173:80"
     depends_on:
       backend:
         condition: service_healthy
