@@ -1,0 +1,27 @@
+# Produção: consome imagens do GHCR publicadas pelo CI.
+# O .env na VPS traz GMAIL_USER / GMAIL_APP_PASSWORD.
+services:
+  backend:
+    image: ghcr.io/ViniciusVon/recursive-scrap-a-algo-2026-01-backend:latest
+    restart: unless-stopped
+    shm_size: '2gb'
+    environment:
+      CORS_ORIGINS: "https://api-a-algo-2026-1.duckdns.org"
+      GMAIL_USER: ${GMAIL_USER:-}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  frontend:
+    image: ghcr.io/ViniciusVon/recursive-scrap-a-algo-2026-01-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
