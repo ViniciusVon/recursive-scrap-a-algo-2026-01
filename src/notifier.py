@@ -15,7 +15,21 @@ logger = logging.getLogger(__name__)
 
 
 def _ler_env(chave: str) -> str:
-    """Leitor simples de chave=valor em `.env` (O(n) nas linhas do arquivo)."""
+    """Resolve a chave a partir de `os.environ` e, como fallback, do
+    arquivo `.env` na raiz do repo.
+
+    Em container (Docker/Compose, CI, VPS) as variáveis chegam via
+    `environment:` e NÃO existe `.env` dentro da imagem — por isso o
+    ambiente do processo tem prioridade. O fallback pro arquivo é só
+    pra dev local (rodando `uvicorn` direto sem `docker compose`).
+
+    Complexidade: O(1) quando vem do ambiente, O(n) nas linhas do
+    `.env` no caso de fallback.
+    """
+    valor_env = os.environ.get(chave)
+    if valor_env:
+        return valor_env.strip()
+
     env_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", ".env"
     )
