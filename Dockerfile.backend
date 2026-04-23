@@ -25,7 +25,14 @@ RUN apt-get update \
        libasound2 \
        ca-certificates \
        curl \
+       tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+# Timezone padrão: América/São_Paulo. Pode ser sobrescrito em runtime
+# via `TZ=...` no docker-compose/env quando hospedarmos em outras
+# regiões. Sem isso, VPS em UTC grava timestamps 3h à frente do BR.
+ENV TZ=America/Sao_Paulo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # O Selenium 4 lê o binário do Chrome via PATH quando usamos Service()
 # sem argumentos — já é o default aqui.
