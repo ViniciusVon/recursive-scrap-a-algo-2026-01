@@ -230,7 +230,7 @@ function StepUsuario({ onPronto }: { onPronto: (u: Usuario) => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// Step 2 — URL + headless
+// Step 2 — URL
 // ---------------------------------------------------------------------------
 
 function StepUrl({
@@ -247,7 +247,6 @@ function StepUrl({
   const [url, setUrl] = useState(
     () => localStorage.getItem(lsUltimaUrl(usuario.id)) ?? '',
   );
-  const [headless, setHeadless] = useState(true);
   const [iniciando, setIniciando] = useState(false);
 
   const [historico, setHistorico] = useState<SessaoHistorica[]>([]);
@@ -275,7 +274,8 @@ function StepUrl({
     setIniciando(true);
     try {
       const urlLimpa = url.trim();
-      const sessao = await api.criarSessao(usuario.id, urlLimpa, headless);
+      // Passa "true" diretamente como 3º argumento para forçar o Headless
+      const sessao = await api.criarSessao(usuario.id, urlLimpa, true);
       localStorage.setItem(lsUltimaUrl(usuario.id), urlLimpa);
       onPronto(sessao);
     } catch (e) {
@@ -312,36 +312,6 @@ function StepUrl({
           )}
         </label>
 
-        <fieldset>
-          <legend className="text-sm text-gray-700 mb-1">
-            Modo do navegador
-          </legend>
-          <label className="inline-flex items-center mr-4">
-            <input
-              type="radio"
-              checked={headless}
-              onChange={() => setHeadless(true)}
-              className="mr-2"
-            />
-            Headless (invisível)
-          </label>
-          <label className="inline-flex items-center">
-            <input
-              type="radio"
-              checked={!headless}
-              onChange={() => setHeadless(false)}
-              className="mr-2"
-            />
-            Mostrar navegador
-          </label>
-          {!headless && (
-            <p className="text-xs text-gray-500 mt-2">
-              A janela do Chrome abre em segundo plano e não rouba foco
-              durante o monitoramento.
-            </p>
-          )}
-        </fieldset>
-
         <div className="flex gap-2">
           <button
             type="button"
@@ -355,7 +325,7 @@ function StepUrl({
             disabled={iniciando || !urlOk}
             className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-60"
           >
-            {iniciando ? 'Abrindo navegador...' : 'Continuar'}
+            {iniciando ? 'Preparando monitor...' : 'Continuar'}
           </button>
         </div>
       </form>

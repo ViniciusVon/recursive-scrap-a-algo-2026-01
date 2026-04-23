@@ -19,7 +19,7 @@ export default function App() {
       <ToastContainer />
       <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
         <h1 className="text-base sm:text-lg font-semibold text-gray-800">
-          Monitor de Preços — <span className="text-indigo-600">MVP</span>
+          Monitor de Preços
         </h1>
       </header>
 
