@@ -18,6 +18,11 @@ services:
     environment:
       # CORS aceita a origem do frontend em dev local.
       CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+      # Timezone do container. Hosts em UTC (VPS típica) geram timestamps
+      # 3h à frente do horário de Brasília — fixamos aqui. Pode ser
+      # sobrescrito via variável de ambiente no host se deployarmos
+      # em outra região (ex.: TZ=Europe/Lisbon).
+      TZ: ${TZ:-America/Sao_Paulo}
       # Preencha com o e-mail remetente e a senha de app do Gmail em
       # um `.env` ao lado deste arquivo — o compose carrega automagicamente.
       GMAIL_USER: ${GMAIL_USER:-}
