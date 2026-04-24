@@ -67,142 +67,22 @@
 
 ## Cada Pull Request deverá ter 2 reviewers para que o código que vá para a branch principal tenha menos probabilidade de dar erro.
 
+
 ---
 
-# **Análise de Complexidade (Big O)**
+# **Documentação**
 
-Esta seção analisa a complexidade assintótica de tempo de cada função
-relevante do projeto e chega na complexidade total do algoritmo principal
-(`monitorar_preco`), que é o que rege o custo da aplicação em execução.
+Toda a documentação do projeto está em [`documentation/`](./documentation/):
 
-## Variáveis usadas na análise
+| Camada | Overview | Complexidade (Big O) |
+|--------|----------|----------------------|
+| Backend | [`documentation/backend.md`](./documentation/backend.md) | [`documentation/complexidade_backend.md`](./documentation/complexidade_backend.md) |
+| Frontend | [`documentation/frontend.md`](./documentation/frontend.md) | [`documentation/complexidade_frontend.md`](./documentation/complexidade_frontend.md) |
 
-| Símbolo | Significado |
-|:-------:|:------------|
-| `n`     | Número de elementos no DOM da página monitorada |
-| `d`     | Profundidade média da árvore do DOM (depth) |
-| `m`     | Número de elementos no DOM do Google Form |
-| `u`     | Número de usuários cadastrados no SQLite |
-| `L`     | Tamanho (em caracteres) de uma string de entrada (URL, e-mail) |
-| `C`     | Número de ciclos executados no loop de monitoramento |
-| `k`     | Quantidade de valores numéricos retornados pelo seletor |
+As análises de complexidade são validadas contra o código em `main` e batem com
+os docstrings das funções. Resumo do algoritmo principal (monitoramento):
 
-> **Observação:** custos de I/O (rede, disco, execução do Chrome) **não**
-> entram no Big O algorítmico — são dominantes na prática, mas não escalam
-> com o tamanho da entrada do nosso algoritmo.
-
-## Complexidade por módulo / função
-
-### `src/utils.py`
-| Função | Complexidade | Justificativa |
-|---|:---:|---|
-| `validar_url(url)`     | **O(L)** ≈ O(1) | Regex match em URL de tamanho limitado |
-| `criar_driver(headless)` | **O(1)**      | Configuração constante do ChromeDriver |
-
-### `src/validators.py`
-| Função | Complexidade | Justificativa |
-|---|:---:|---|
-| `validar_nome_usuario(nome)` | **O(L)** | `split` + `isalpha` percorrem a string |
-| `validar_email(email)`       | **O(L)** ≈ O(1) | Regex sobre e-mail limitado (RFC 5321) |
-
-### `src/db.py` (SQLite)
-| Função | Complexidade | Justificativa |
-|---|:---:|---|
-| `inicializar_banco()`          | **O(1)**      | `CREATE TABLE IF NOT EXISTS` em metadado |
-| `cadastrar_usuario(nome,email)`| **O(log u)**  | INSERT no B-tree do SQLite (índice PK) |
-| `listar_usuarios()`            | **O(u)**      | Full scan da tabela |
-| `buscar_usuario_por_id(id)`    | **O(log u)**  | Lookup por chave primária no B-tree |
-
-### `src/search_numbers.py`
-| Função | Complexidade | Justificativa |
-|---|:---:|---|
-| `encontrar_numeros(texto)` | **O(n)** | `re.findall` percorre o texto 1× (regex linear) |
-| `buscar_numeros_na_pagina(url)` | **O(n)** | Dominado por `encontrar_numeros`; `driver.get` é I/O |
-
-### `src/value_selector.py`
-| Função | Complexidade | Justificativa |
-|---|:---:|---|
-| `_carregar_script_js()`            | **O(1)**        | Lê arquivo pequeno de tamanho fixo |
-| `listar_valores_com_xpath(driver)` | **O(n · d)**    | JS varre n nós do DOM e, para cada folha com dígitos, `getXPath` sobe até a raiz (profundidade d). Deduplicação em Python é O(k) |
-| `selecionar_valor(driver)`         | **O(n · d)**    | Dominado por `listar_valores_com_xpath` |
-| `ler_valor_por_xpath(driver,xp)`   | **O(d)** *(médio)*, O(n) *(pior)* | Avaliação de XPath absoluto desce nível a nível |
-
-### `src/form_recorder.py`
-| Função | Complexidade | Justificativa |
-|---|:---:|---|
-| `abrir_aba_form(driver, url)`      | **O(1)** | `window.open` + leitura de handles |
-| `registrar_alteracao(...)`         | **O(m)** | `find_elements` varre todo o DOM do form; preenchimento e busca de botão são O(campos + botões) ⊆ O(m) |
-
-### `src/notifier.py`
-| Função | Complexidade | Justificativa |
-|---|:---:|---|
-| `carregar_senha_app()`               | **O(1)** | `.env` tem poucas linhas (tamanho constante) |
-| `enviar_email(...)`                  | **O(1)** algorítmico | Custo proporcional ao tamanho da mensagem (I/O) |
-| `montar_corpo_alteracao(url,a,d)`    | **O(n log n)** | `sorted()` sobre sets de diferença domina `O(k)` das operações de conjunto |
-
-### `app.py`
-| Função | Complexidade | Justificativa |
-|---|:---:|---|
-| `identificar_usuario()` | **O(u)**          | Dominado por `listar_usuarios`; cadastro/busca são O(log u) |
-| `coletar_entradas()`    | **O(u)**          | Dominado por `identificar_usuario` |
-| `monitorar_preco(...)`  | **O(n·d + C·n)**  | Setup O(n·d) + C iterações de O(n) |
-| `main()`                | **O(n·d + C·n)**  | Dominado por `monitorar_preco` |
-
-## Complexidade total do algoritmo principal
-
-O pipeline da aplicação é:
-
-```
-main()
- ├── inicializar_banco()            → O(1)
- ├── coletar_entradas()             → O(u)
- └── monitorar_preco()
-      ├── driver.get(url)            → I/O
-      ├── selecionar_valor(driver)   → O(n · d)          [setup, 1×]
-      ├── abrir_aba_form(...)        → O(1)
-      └── loop (C ciclos):
-           ├── refresh               → I/O
-           ├── ler_valor_por_xpath   → O(d)  médio
-           └── [se alterou]
-                registrar_alteracao  → O(m)
-```
-
-Somando:
-
-```
-T(n, d, m, u, C) = O(u) + O(n · d) + C · [ O(d) + α · O(m) ]
-```
-
-Onde `α ∈ [0, 1]` é a fração de ciclos em que houve alteração
-(na prática α « 1). Como `d ≤ n` e `u` é independente das demais:
-
-> ### **Complexidade final: O(n · d + C · (d + α · m))**
+> **T(n, d, u, k, s, C) = O(n · d + C · (d + s) + k)**
 >
-> Assumindo `α → 0` em regime estacionário (poucas alterações por ciclo),
-> a complexidade se reduz a **O(n · d + C · d)**, ou seja, **linear no DOM
-> para o setup e praticamente constante por ciclo** após a seleção inicial.
-
-## Por que essa complexidade é adequada
-
-1. **Setup pago uma vez**: o custo `O(n · d)` de listar todos os valores
-   numéricos com seus XPaths ocorre só no início, não a cada ciclo.
-2. **Ciclo barato**: dentro do loop de monitoramento, a leitura é feita
-   por um único `XPath` absoluto — o navegador resolve isso em `O(d)`
-   (profundidade do caminho), sem varrer o DOM inteiro.
-3. **Sem estruturas quadráticas**: nenhuma rotina faz loop dentro de
-   loop sobre o DOM. O JavaScript de listagem é `O(n · d)`, não `O(n²)`.
-4. **Escalabilidade**: dobrar o tempo de monitoramento (C) não re-executa
-   o setup, apenas soma `C · O(d)` — portanto o sistema pode monitorar
-   uma página por horas sem degradação.
-
-## Complexidade de espaço
-
-| Estrutura | Espaço |
-|---|:---:|
-| Lista de valores + XPaths (pré-dedup)   | **O(n)**  |
-| Set de valores vistos (deduplicação)    | **O(k)**  |
-| `historico` de alterações               | **O(α · C)** |
-| Banco SQLite (usuários)                 | **O(u)** |
-
-**Espaço total: O(n + α · C + u)** — linear em cada dimensão
-independente, sem explosão de memória durante a execução.
+> Setup **linear no DOM** (`n · d`), ciclo **constante** após a seleção (`d + s`,
+> com `s = 1` na prática), e **O(k)** no encerramento pra persistir o histórico.
