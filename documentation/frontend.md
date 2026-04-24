@@ -97,5 +97,5 @@ Sobe backend em `:8000` e frontend (nginx) em `:5173`. Veja o
 
 ## Análise de complexidade
 
-Consulte [`docs/complexidade_frontend.md`](docs/complexidade_frontend.md)
+Consulte [`complexidade_frontend.md`](./complexidade_frontend.md)
 para a análise Big O dos principais fluxos do frontend.
